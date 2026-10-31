@@ -1,0 +1,9 @@
+services:
+  autoshop_bot:
+    build: .
+    container_name: autoshop_tg_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data

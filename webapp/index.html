@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AutoShop Pro — Telegram Mini App</title>
+  
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Шрифты -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ / ШАПКА -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <span class="brand-name" id="shopName">Digital Hub Shop</span>
+          <span class="brand-badge">AutoShop Pro v2.4</span>
+        </div>
+      </div>
+      
+      <!-- Профиль пользователя -->
+      <div class="user-pill" id="userPill" onclick="openProfileModal()">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info">
+          <span class="user-name" id="userName">Пользователь</span>
+          <div class="user-balance">
+            <span class="balance-amount" id="userBalance">0.00</span>
+            <span class="balance-currency">₽</span>
+          </div>
+        </div>
+        <button class="topup-btn" title="Пополнить баланс" onclick="event.stopPropagation(); openDepositModal();">+</button>
+      </div>
+    </header>
+
+    <!-- АКЦИОННЫЙ БАННЕР / КАРУСЕЛЬ -->
+    <section class="banner-carousel">
+      <div class="promo-card active" onclick="openPromoModal()">
+        <div class="promo-badge">🎁 ПРОМОКОД</div>
+        <h3 class="promo-title">Получите 100₽ на баланс!</h3>
+        <p class="promo-subtitle">Активируйте код <b>TEST100</b> прямо сейчас</p>
+        <span class="promo-action">Ввести промокод →</span>
+      </div>
+    </section>
+
+    <!-- ПОИСК И ФИЛЬТРЫ КАТЕГОРИЙ -->
+    <section class="controls-section">
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Поиск товаров, ключей, услуг..." oninput="handleSearch(this.value)">
+        <button id="clearSearchBtn" class="clear-btn" onclick="clearSearch()" style="display: none;">✕</button>
+      </div>
+
+      <!-- Категории (скроллируемые чипсы) -->
+      <div class="categories-scroll" id="categoriesBar">
+        <button class="cat-chip active" data-cat="all" onclick="selectCategory('all', this)">
+          <span>🔥</span> Все товары
+        </button>
+        <!-- Динамические категории добавятся через JS -->
+      </div>
+    </section>
+
+    <!-- ВИТРИНА ТОВАРОВ -->
+    <main class="products-section">
+      <div class="section-header">
+        <h2 class="section-title" id="sectionTitle">Каталог товаров</h2>
+        <span class="items-count" id="itemsCountBadge">Загрузка...</span>
+      </div>
+
+      <div class="products-grid" id="productsGrid">
+        <!-- Скелетоны при загрузке -->
+        <div class="product-skeleton"></div>
+        <div class="product-skeleton"></div>
+      </div>
+
+      <!-- Состояние пустого каталога -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">🔍</div>
+        <h3>Товары не найдены</h3>
+        <p>Попробуйте изменить запрос поиска или выбрать другую категорию</p>
+      </div>
+    </main>
+
+    <!-- БЫСТРАЯ НАВИГАЦИОННАЯ ПАНЕЛЬ СНИЗУ -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchNav('catalog')">
+        <span class="nav-icon">🛍️</span>
+        <span class="nav-label">Магазин</span>
+      </button>
+      <button class="nav-item" onclick="openDepositModal()">
+        <span class="nav-icon">💳</span>
+        <span class="nav-label">Пополнить</span>
+      </button>
+      <button class="nav-item" onclick="openOrdersModal()">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">Покупки</span>
+      </button>
+      <button class="nav-item" onclick="openProfileModal()">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Профиль</span>
+      </button>
+    </nav>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛИ ТОВАРА (BOTTOM SHEET) -->
+    <div class="modal-backdrop" id="productModal" onclick="closeProductModal(event)">
+      <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closeProductModal()">✕</button>
+        
+        <div class="modal-product-header">
+          <div class="modal-cat-tag" id="mProductCategory">Категория</div>
+          <h2 class="modal-prod-title" id="mProductTitle">Название товара</h2>
+          <div class="modal-prod-meta">
+            <span class="modal-price" id="mProductPrice">0 ₽</span>
+            <span class="modal-stars" id="mProductStars">⭐ 0</span>
+            <span class="stock-pill" id="mProductStock">В наличии</span>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <h4 class="meta-label">Описание:</h4>
+          <p class="modal-desc" id="mProductDesc">Подробное описание товара...</p>
+          
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-icon">⚡</span>
+              <div>
+                <strong>Мгновенная автовыдача</strong>
+                <p>Товар отправляется сразу после нажатия кнопки «Купить»</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🛡️</span>
+              <div>
+                <strong>100% Гарантия</strong>
+                <p>Все ключи и доступы проверяются перед выдачей</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-primary" id="buyBtn" onclick="handleBuyClick()">
+            <span>Купить с баланса</span>
+            <span class="btn-price-tag" id="buyBtnPrice">0 ₽</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: УСПЕШНАЯ ПОКУПКА (АВТОВЫДАЧА) -->
+    <div class="modal-backdrop" id="successModal" onclick="closeSuccessModal(event)">
+      <div class="bottom-sheet success-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div class="success-icon-wrap">🎉</div>
+        <h2 class="success-title">Покупка успешно выполнена!</h2>
+        <p class="success-sub" id="successOrderInfo">Заказ #ORD-000000</p>
+
+        <div class="delivery-box">
+          <span class="delivery-label">ВАШИ ДАННЫЕ / КЛЮЧ:</span>
+          <div class="delivery-content" id="deliveryContent">KEY-XXXX-YYYY</div>
+          <button class="copy-btn" id="copyDeliveryBtn" onclick="copyDeliveredData()">
+            📋 Скопировать данные
+          </button>
+        </div>
+
+        <p class="delivery-note">Данные также сохранены в вашем профиле в разделе «Мои покупки».</p>
+
+        <button class="btn btn-secondary" onclick="closeSuccessModal()">
+          Продолжить покупки
+        </button>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПОПОЛНЕНИЕ БАЛАНСА -->
+    <div class="modal-backdrop" id="depositModal" onclick="closeDepositModal(event)">
+      <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closeDepositModal()">✕</button>
+        
+        <h2 class="sheet-title">💳 Пополнение баланса</h2>
+        <p class="sheet-sub">Выберите сумму и метод оплаты:</p>
+
+        <div class="preset-amounts">
+          <button class="preset-btn" onclick="setDepositAmount(100)">100 ₽</button>
+          <button class="preset-btn active" onclick="setDepositAmount(250)">250 ₽</button>
+          <button class="preset-btn" onclick="setDepositAmount(500)">500 ₽</button>
+          <button class="preset-btn" onclick="setDepositAmount(1000)">1000 ₽</button>
+        </div>
+
+        <div class="input-wrap">
+          <label class="input-label">Или укажите свою сумму (в рублях):</label>
+          <input type="number" id="customDepositInput" value="250" min="10" max="100000" oninput="updateDepositCalc()">
+        </div>
+
+        <div class="payment-methods">
+          <div class="pay-method-card" onclick="startPayment('stars')">
+            <span class="pay-icon">⭐</span>
+            <div class="pay-info">
+              <strong>Telegram Stars</strong>
+              <span>Официальные звезды Telegram (XTR)</span>
+            </div>
+            <span class="pay-tag" id="starsCalcBadge">~125 ⭐️</span>
+          </div>
+
+          <div class="pay-method-card" onclick="startPayment('crypto')">
+            <span class="pay-icon">💎</span>
+            <div class="pay-info">
+              <strong>CryptoBot</strong>
+              <span>USDT, TON, BTC, TRX</span>
+            </div>
+            <span class="pay-tag">Крипта</span>
+          </div>
+
+          <div class="pay-method-card" onclick="startPayment('sbp')">
+            <span class="pay-icon">💳</span>
+            <div class="pay-info">
+              <strong>СБП / Карты РФ</strong>
+              <span>Перевод на карту по номеру с чеком</span>
+            </div>
+            <span class="pay-tag">Без комиссии</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПРОМОКОД -->
+    <div class="modal-backdrop" id="promoModal" onclick="closePromoModal(event)">
+      <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closePromoModal()">✕</button>
+        
+        <h2 class="sheet-title">🎁 Активация промокода</h2>
+        <p class="sheet-sub">Введите промокод для мгновенного начисления средств на баланс:</p>
+
+        <div class="input-wrap">
+          <input type="text" id="promoInput" placeholder="Например: TEST100" style="text-transform: uppercase;">
+        </div>
+
+        <div id="promoResult" class="promo-alert" style="display: none;"></div>
+
+        <button class="btn btn-primary" id="activatePromoBtn" onclick="submitPromoCode()">
+          Активировать промокод
+        </button>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ИСТОРИЯ ПОКУПОК -->
+    <div class="modal-backdrop" id="ordersModal" onclick="closeOrdersModal(event)">
+      <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closeOrdersModal()">✕</button>
+        
+        <h2 class="sheet-title">📦 Мои покупки</h2>
+        <p class="sheet-sub">Список приобретенных товаров и выданных ключей:</p>
+
+        <div class="orders-list" id="ordersList">
+          <p class="loading-text">Загрузка заказов...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ -->
+    <div class="modal-backdrop" id="profileModal" onclick="closeProfileModal(event)">
+      <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closeProfileModal()">✕</button>
+        
+        <div class="profile-card">
+          <div class="profile-avatar-big" id="pAvatarBig">U</div>
+          <h2 class="profile-name-big" id="pNameBig">Пользователь</h2>
+          <span class="profile-id-big" id="pIdBig">ID: 00000000</span>
+          
+          <div class="profile-stat-box">
+            <div class="stat-col">
+              <span class="stat-label">Баланс:</span>
+              <strong class="stat-val" id="pBalanceBig">0.00 ₽</strong>
+            </div>
+            <div class="stat-col">
+              <span class="stat-label">Приглашено:</span>
+              <strong class="stat-val" id="pReferralsBig">0 чел.</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button class="btn btn-primary" onclick="closeProfileModal(); openDepositModal();">
+            💳 Пополнить баланс
+          </button>
+          <button class="btn btn-secondary" onclick="closeProfileModal(); openOrdersModal();">
+            📦 История заказов
+          </button>
+          <button class="btn btn-secondary" onclick="copyRefLink()">
+            👥 Скопировать реферальную ссылку
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- УВЕДОМЛЕНИЕ (TOAST) -->
+    <div class="toast-notification" id="toast"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

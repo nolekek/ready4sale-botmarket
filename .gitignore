@@ -1,0 +1,26 @@
+# Environment variables (CRITICAL: DO NOT COMMIT REAL TOKENS)
+.env
+.env.local
+
+# SQLite Database & Storage
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python Bytecode & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Logs
+*.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
